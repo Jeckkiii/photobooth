@@ -39,7 +39,7 @@
             text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
         }
 
-        /* Responsive Video Box */
+        /* Area Video (Kamera) */
         .video-box {
             position: relative;
             width: 100%;
@@ -49,14 +49,14 @@
             border-radius: 20px;
             overflow: hidden;
             background: #000;
-            border: 3px solid #333;
+            border: 3px solid #444;
         }
 
         video {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* PREVIEW MIRROR */
+            transform: scaleX(-1); /* Mirror untuk preview */
         }
 
         #countdown {
@@ -73,11 +73,11 @@
         }
 
         .controls {
-            margin-top: 20px;
+            margin-top: 25px;
         }
 
         button {
-            padding: 12px 30px;
+            padding: 14px 35px;
             font-size: 14px;
             font-weight: bold;
             border: none;
@@ -85,42 +85,48 @@
             cursor: pointer;
             transition: all 0.3s ease;
             text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .btn-capture {
             background: linear-gradient(135deg, #00c853, #b2ff59);
             color: #003300;
-            box-shadow: 0 8px 15px rgba(0, 200, 83, 0.3);
+            box-shadow: 0 8px 15px rgba(0, 200, 83, 0.4);
         }
 
-        .btn-capture:active {
-            transform: scale(0.95);
-        }
+        .btn-capture:hover { transform: translateY(-2px); }
+        .btn-capture:active { transform: scale(0.95); }
 
         .btn-download {
             background: white;
             color: #333;
-            margin-top: 15px;
+            margin-top: 20px;
             display: none;
         }
 
-        /* Result Image Styling */
+        /* Tampilan Hasil Akhir */
+        #result-container {
+            margin-top: 25px;
+        }
+
         #result {
             width: 100%;
-            max-width: 240px; /* Ukuran tampilan preview hasil */
-            margin-top: 20px;
-            border-radius: 8px;
-            border: 4px solid white;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            max-width: 260px; /* Ukuran tampilan preview hasil */
+            height: auto;
+            border-radius: 10px;
+            border: 5px solid white;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+            display: none;
         }
 
         canvas {
-            display: none;
+            display: none; /* Kanvas pengolah disembunyikan */
         }
 
-        @media (max-width: 480px) {
-            .container { padding: 15px; }
-            h1 { font-size: 1.2rem; letter-spacing: 2px; }
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            opacity: 0.4;
         }
     </style>
 </head>
@@ -135,19 +141,22 @@
     </div>
 
     <div class="controls">
-        <button class="btn-capture" onclick="start()">Ambil Foto</button>
+        <button class="btn-capture" id="startBtn" onclick="start()">Ambil Foto</button>
     </div>
 
     <canvas id="shotCanvas" width="480" height="360"></canvas>
+    
     <canvas id="finalCanvas" width="520" height="1180"></canvas>
 
     <div id="result-container">
-        <img id="result">
+        <img id="result" alt="Hasil Foto">
         <br>
-        <a id="download" download="photobooth.png">
+        <a id="download" download="photobooth_capture.png">
             <button class="btn-download" id="downloadBtn">Download Hasil</button>
         </a>
     </div>
+
+    <div class="footer">Dibuat untuk Jeckkiii Photo Booth</div>
 </div>
 
 <script>
@@ -162,19 +171,36 @@ const countdown = document.getElementById("countdown");
 const resultImg = document.getElementById("result");
 const downloadLink = document.getElementById("download");
 const downloadBtn = document.getElementById("downloadBtn");
+const startBtn = document.getElementById("startBtn");
 
+// Load Frame
 const frame = new Image();
-frame.src = "frame.png"; // Pastikan file ini ada
+frame.src = "frame.png"; // Nama file harus persis sama di GitHub
 
 let photos = [];
 
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-.then(stream => video.srcObject = stream);
+// Akses Kamera
+navigator.mediaDevices.getUserMedia({ 
+    video: { 
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        facingMode: "user" 
+    } 
+})
+.then(stream => {
+    video.srcObject = stream;
+})
+.catch(err => {
+    alert("Kamera tidak dapat diakses. Pastikan izin diberikan.");
+    console.error(err);
+});
 
 function start() {
     photos = [];
-    resultImg.src = "";
+    resultImg.style.display = "none";
     downloadBtn.style.display = "none";
+    startBtn.disabled = true;
+    startBtn.innerText = "Processing...";
     take(1);
 }
 
@@ -184,7 +210,7 @@ function take(n) {
 
     const timer = setInterval(() => {
         t--;
-        countdown.innerText = t > 0 ? t : "";
+        countdown.innerText = (t > 0) ? t : "";
 
         if (t === 0) {
             clearInterval(timer);
@@ -194,52 +220,68 @@ function take(n) {
                 setTimeout(() => take(n + 1), 700);
             } else {
                 countdown.innerText = "✔";
-                setTimeout(() => countdown.innerText = "", 1000);
-                buildFinal();
+                setTimeout(() => {
+                    countdown.innerText = "";
+                    buildFinal();
+                }, 800);
             }
         }
     }, 1000);
 }
 
 function capture() {
+    // Agar hasil tidak gepeng, kita gambar ke kanvas 480x360
     sctx.save();
+    // Un-mirror: Kita balikkan lagi agar tulisan di baju/background tidak terbalik
     sctx.translate(shotCanvas.width, 0);
     sctx.scale(-1, 1);
+    
+    // Ambil gambar dari video stream
     sctx.drawImage(video, 0, 0, shotCanvas.width, shotCanvas.height);
     sctx.restore();
+
     photos.push(shotCanvas.toDataURL("image/png"));
 }
 
 async function buildFinal() {
+    // 1. Bersihkan Kanvas
     fctx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-    // Background dasar frame (Opsional jika frame.png transparan)
+    // 2. Isi Background (Warna Putih/Dasar)
     fctx.fillStyle = "white";
     fctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
+    // 3. Muat semua foto yang sudah diambil
     const imgs = await Promise.all(photos.map(src => loadImg(src)));
     
-    /** * PENGATURAN JARAK FOTO 
-     * y = posisi awal foto pertama
-     * spacing = jarak antar foto
-    **/
-    let y = 60; // Naik sedikit dari sebelumnya (80)
-    let spacing = 355; // Lebih rapat dari sebelumnya (370)
+    // 4. Pengaturan Tata Letak (Agar Tidak Tertutup Frame)
+    let photoWidth = 460;   // Lebar foto di hasil akhir
+    let photoHeight = 345;  // Tinggi foto di hasil akhir (Rasio 4:3)
+    let xPos = (finalCanvas.width - photoWidth) / 2; // Rata Tengah
+    
+    let startY = 55;  // Foto pertama agak naik ke atas
+    let gap = 360;    // Jarak antar foto agar pas di lubang strip
 
-    imgs.forEach(img => {
-        fctx.drawImage(img, 20, y, 480, 360);
-        y += spacing;
+    imgs.forEach((img, index) => {
+        let currentY = startY + (index * gap);
+        fctx.drawImage(img, xPos, currentY, photoWidth, photoHeight);
     });
 
-    // Gambar frame di atas foto
+    // 5. Tempel Frame di Atas Foto
     if (frame.complete && frame.naturalHeight !== 0) {
         fctx.drawImage(frame, 0, 0, finalCanvas.width, finalCanvas.height);
     }
 
-    const finalImage = finalCanvas.toDataURL("image/png");
-    resultImg.src = finalImage;
-    downloadLink.href = finalImage;
+    // 6. Tampilkan Hasil
+    const finalDataUrl = finalCanvas.toDataURL("image/png");
+    resultImg.src = finalDataUrl;
+    resultImg.style.display = "inline-block";
+    
+    downloadLink.href = finalDataUrl;
     downloadBtn.style.display = "inline-block";
+    
+    startBtn.disabled = false;
+    startBtn.innerText = "Ambil Foto Lagi";
 }
 
 function loadImg(src) {
