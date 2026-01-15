@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Photo Booth</title>
+    <style>
+        /* Modern Reset & Background */
+        body {
+            background: radial-gradient(circle, #2c3e50, #000000);
+            color: white;
+            text-align: center;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 550px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Responsive Video Box */
+        .video-box {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            aspect-ratio: 4 / 3;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid #333;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* PREVIEW MIRROR */
+        }
+
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-capture {
+            background: linear-gradient(135deg, #00c853, #b2ff59);
+            color: #003300;
+            box-shadow: 0 8px 15px rgba(0, 200, 83, 0.3);
+        }
+
+        .btn-capture:active {
+            transform: scale(0.95);
+        }
+
+        .btn-download {
+            background: white;
+            color: #333;
+            margin-top: 15px;
+            display: none;
+        }
+
+        /* Result Image Styling */
+        #result {
+            width: 100%;
+            max-width: 240px; /* Ukuran tampilan preview hasil */
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 4px solid white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 15px; }
+            h1 { font-size: 1.2rem; letter-spacing: 2px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📸 PHOTO BOOTH</h1>
+
+    <div class="video-box">
+        <video id="video" autoplay playsinline></video>
+        <div id="countdown"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-capture" onclick="start()">Ambil Foto</button>
+    </div>
+
+    <canvas id="shotCanvas" width="480" height="360"></canvas>
+    <canvas id="finalCanvas" width="520" height="1180"></canvas>
+
+    <div id="result-container">
+        <img id="result">
+        <br>
+        <a id="download" download="photobooth.png">
+            <button class="btn-download" id="downloadBtn">Download Hasil</button>
+        </a>
+    </div>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const shotCanvas = document.getElementById("shotCanvas");
+const sctx = shotCanvas.getContext("2d");
+
+const finalCanvas = document.getElementById("finalCanvas");
+const fctx = finalCanvas.getContext("2d");
+
+const countdown = document.getElementById("countdown");
+const resultImg = document.getElementById("result");
+const downloadLink = document.getElementById("download");
+const downloadBtn = document.getElementById("downloadBtn");
+
+const frame = new Image();
+frame.src = "frame.png"; // Pastikan file ini ada
+
+let photos = [];
+
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+.then(stream => video.srcObject = stream);
+
+function start() {
+    photos = [];
+    resultImg.src = "";
+    downloadBtn.style.display = "none";
+    take(1);
+}
+
+function take(n) {
+    let t = 3;
+    countdown.innerText = t;
+
+    const timer = setInterval(() => {
+        t--;
+        countdown.innerText = t > 0 ? t : "";
+
+        if (t === 0) {
+            clearInterval(timer);
+            capture();
+
+            if (n < 3) {
+                setTimeout(() => take(n + 1), 700);
+            } else {
+                countdown.innerText = "✔";
+                setTimeout(() => countdown.innerText = "", 1000);
+                buildFinal();
+            }
+        }
+    }, 1000);
+}
+
+function capture() {
+    sctx.save();
+    sctx.translate(shotCanvas.width, 0);
+    sctx.scale(-1, 1);
+    sctx.drawImage(video, 0, 0, shotCanvas.width, shotCanvas.height);
+    sctx.restore();
+    photos.push(shotCanvas.toDataURL("image/png"));
+}
+
+async function buildFinal() {
+    fctx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+    // Background dasar frame (Opsional jika frame.png transparan)
+    fctx.fillStyle = "white";
+    fctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+    const imgs = await Promise.all(photos.map(src => loadImg(src)));
+    
+    /** * PENGATURAN JARAK FOTO 
+     * y = posisi awal foto pertama
+     * spacing = jarak antar foto
+    **/
+    let y = 60; // Naik sedikit dari sebelumnya (80)
+    let spacing = 355; // Lebih rapat dari sebelumnya (370)
+
+    imgs.forEach(img => {
+        fctx.drawImage(img, 20, y, 480, 360);
+        y += spacing;
+    });
+
+    // Gambar frame di atas foto
+    if (frame.complete && frame.naturalHeight !== 0) {
+        fctx.drawImage(frame, 0, 0, finalCanvas.width, finalCanvas.height);
+    }
+
+    const finalImage = finalCanvas.toDataURL("image/png");
+    resultImg.src = finalImage;
+    downloadLink.href = finalImage;
+    downloadBtn.style.display = "inline-block";
+}
+
+function loadImg(src) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(new Image());
+        img.src = src;
+    });
+}
+</script>
+
+</body>
+</html>
