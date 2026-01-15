@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Photo Booth</title>
     <style>
-        /* Modern Reset & Background */
         body {
             background: radial-gradient(circle, #2c3e50, #000000);
             color: white;
             text-align: center;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
-            padding: 20px 0;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -20,114 +19,64 @@
         }
 
         .container {
-            width: 90%;
-            max-width: 550px;
+            width: 100%;
+            max-width: 500px;
             background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            padding: 25px;
-            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
         }
 
-        h1 {
-            font-weight: 300;
-            letter-spacing: 4px;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            color: #00f2fe;
-            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
-        }
+        h1 { font-weight: 300; letter-spacing: 2px; font-size: 1.4rem; color: #00f2fe; }
 
-        /* Area Video (Kamera) */
         .video-box {
             position: relative;
             width: 100%;
-            max-width: 480px;
-            margin: 0 auto;
-            aspect-ratio: 4 / 3;
-            border-radius: 20px;
+            aspect-ratio: 4/3;
+            border-radius: 15px;
             overflow: hidden;
             background: #000;
             border: 3px solid #444;
         }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Mirror untuk preview */
-        }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
         #countdown {
-            position: absolute;
-            top: 50%;
-            left: 50%;
+            position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 80px;
-            font-weight: 900;
-            color: #fff;
+            font-size: 70px; font-weight: 900;
             text-shadow: 0 0 20px rgba(0,0,0,0.8);
-            pointer-events: none;
             z-index: 10;
         }
 
-        .controls {
-            margin-top: 25px;
-        }
+        .controls { margin-top: 20px; }
 
         button {
-            padding: 14px 35px;
-            font-size: 14px;
-            font-weight: bold;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            padding: 12px 25px; font-size: 14px; font-weight: bold;
+            border: none; border-radius: 50px; cursor: pointer;
+            text-transform: uppercase; transition: 0.3s;
         }
 
-        .btn-capture {
-            background: linear-gradient(135deg, #00c853, #b2ff59);
-            color: #003300;
-            box-shadow: 0 8px 15px rgba(0, 200, 83, 0.4);
-        }
+        .btn-capture { background: linear-gradient(135deg, #00c853, #b2ff59); color: #003300; }
+        .btn-capture:disabled { background: #555; color: #aaa; }
 
-        .btn-capture:hover { transform: translateY(-2px); }
-        .btn-capture:active { transform: scale(0.95); }
+        .btn-download { background: white; color: #333; margin-top: 15px; display: none; width: 100%; }
 
-        .btn-download {
-            background: white;
-            color: #333;
-            margin-top: 20px;
-            display: none;
-        }
-
-        /* Tampilan Hasil Akhir */
-        #result-container {
-            margin-top: 25px;
-        }
-
+        /* PERBAIKAN AGAR TIDAK GEPENG DI LAYAR HP */
         #result {
             width: 100%;
-            max-width: 260px; /* Ukuran tampilan preview hasil */
+            max-width: 250px; /* Ukuran preview di HP */
             height: auto;
-            border-radius: 10px;
-            border: 5px solid white;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+            object-fit: contain; /* Menjaga rasio asli gambar */
+            margin-top: 20px;
+            border: 4px solid white;
+            border-radius: 5px;
             display: none;
         }
 
-        canvas {
-            display: none; /* Kanvas pengolah disembunyikan */
-        }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 11px;
-            opacity: 0.4;
-        }
+        canvas { display: none; }
     </style>
 </head>
 <body>
@@ -141,158 +90,110 @@
     </div>
 
     <div class="controls">
-        <button class="btn-capture" id="startBtn" onclick="start()">Ambil Foto</button>
+        <button class="btn-capture" id="startBtn" onclick="start()">Mulai Foto</button>
     </div>
 
     <canvas id="shotCanvas" width="480" height="360"></canvas>
-    
     <canvas id="finalCanvas" width="520" height="1180"></canvas>
 
-    <div id="result-container">
-        <img id="result" alt="Hasil Foto">
-        <br>
-        <a id="download" download="photobooth_capture.png">
-            <button class="btn-download" id="downloadBtn">Download Hasil</button>
-        </a>
-    </div>
-
-    <div class="footer">Dibuat untuk Jeckkiii Photo Booth</div>
+    <img id="result" alt="Hasil Foto">
+    <a id="download" download="photobooth_jeck.png">
+        <button class="btn-download" id="downloadBtn">Download Hasil</button>
+    </a>
 </div>
 
 <script>
 const video = document.getElementById("video");
 const shotCanvas = document.getElementById("shotCanvas");
 const sctx = shotCanvas.getContext("2d");
-
 const finalCanvas = document.getElementById("finalCanvas");
 const fctx = finalCanvas.getContext("2d");
-
 const countdown = document.getElementById("countdown");
 const resultImg = document.getElementById("result");
-const downloadLink = document.getElementById("download");
 const downloadBtn = document.getElementById("downloadBtn");
 const startBtn = document.getElementById("startBtn");
 
-// Load Frame
 const frame = new Image();
-frame.src = "frame.png"; // Nama file harus persis sama di GitHub
+frame.src = "frame.png"; 
 
 let photos = [];
 
-// Akses Kamera
-navigator.mediaDevices.getUserMedia({ 
-    video: { 
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: "user" 
-    } 
-})
-.then(stream => {
-    video.srcObject = stream;
-})
-.catch(err => {
-    alert("Kamera tidak dapat diakses. Pastikan izin diberikan.");
-    console.error(err);
-});
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+.then(stream => { video.srcObject = stream; });
 
 function start() {
     photos = [];
     resultImg.style.display = "none";
     downloadBtn.style.display = "none";
     startBtn.disabled = true;
-    startBtn.innerText = "Processing...";
     take(1);
 }
 
 function take(n) {
     let t = 3;
     countdown.innerText = t;
-
     const timer = setInterval(() => {
         t--;
-        countdown.innerText = (t > 0) ? t : "";
-
+        countdown.innerText = t > 0 ? t : "";
         if (t === 0) {
             clearInterval(timer);
             capture();
-
             if (n < 3) {
-                setTimeout(() => take(n + 1), 700);
+                setTimeout(() => take(n + 1), 800);
             } else {
                 countdown.innerText = "✔";
-                setTimeout(() => {
-                    countdown.innerText = "";
-                    buildFinal();
-                }, 800);
+                setTimeout(() => { countdown.innerText = ""; buildFinal(); }, 800);
             }
         }
     }, 1000);
 }
 
 function capture() {
-    // Agar hasil tidak gepeng, kita gambar ke kanvas 480x360
     sctx.save();
-    // Un-mirror: Kita balikkan lagi agar tulisan di baju/background tidak terbalik
     sctx.translate(shotCanvas.width, 0);
     sctx.scale(-1, 1);
-    
-    // Ambil gambar dari video stream
     sctx.drawImage(video, 0, 0, shotCanvas.width, shotCanvas.height);
     sctx.restore();
-
     photos.push(shotCanvas.toDataURL("image/png"));
 }
 
 async function buildFinal() {
-    // 1. Bersihkan Kanvas
-    fctx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
-
-    // 2. Isi Background (Warna Putih/Dasar)
     fctx.fillStyle = "white";
     fctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-    // 3. Muat semua foto yang sudah diambil
     const imgs = await Promise.all(photos.map(src => loadImg(src)));
     
-    // 4. Pengaturan Tata Letak (Agar Tidak Tertutup Frame)
-    let photoWidth = 460;   // Lebar foto di hasil akhir
-    let photoHeight = 345;  // Tinggi foto di hasil akhir (Rasio 4:3)
-    let xPos = (finalCanvas.width - photoWidth) / 2; // Rata Tengah
+    // POSISI FOTO AGAR PAS DI LUBANG FRAME (Hasil dari analisa foto kamu)
+    let pWidth = 440;   
+    let pHeight = 310;  
+    let xPos = (finalCanvas.width - pWidth) / 2;
     
-    let startY = 55;  // Foto pertama agak naik ke atas
-    let gap = 360;    // Jarak antar foto agar pas di lubang strip
+    let startY = 85;    // Posisi foto ke-1
+    let gap = 340;      // Jarak antar foto agar tidak tertutup bunga/gambar bingkai
 
-    imgs.forEach((img, index) => {
-        let currentY = startY + (index * gap);
-        fctx.drawImage(img, xPos, currentY, photoWidth, photoHeight);
+    imgs.forEach((img, i) => {
+        fctx.drawImage(img, xPos, startY + (i * gap), pWidth, pHeight);
     });
 
-    // 5. Tempel Frame di Atas Foto
-    if (frame.complete && frame.naturalHeight !== 0) {
+    if (frame.complete) {
         fctx.drawImage(frame, 0, 0, finalCanvas.width, finalCanvas.height);
     }
 
-    // 6. Tampilkan Hasil
-    const finalDataUrl = finalCanvas.toDataURL("image/png");
-    resultImg.src = finalDataUrl;
+    const dataUrl = finalCanvas.toDataURL("image/png");
+    resultImg.src = dataUrl;
     resultImg.style.display = "inline-block";
-    
-    downloadLink.href = finalDataUrl;
-    downloadBtn.style.display = "inline-block";
-    
+    document.getElementById("download").href = dataUrl;
+    downloadBtn.style.display = "block";
     startBtn.disabled = false;
-    startBtn.innerText = "Ambil Foto Lagi";
 }
 
 function loadImg(src) {
     return new Promise(resolve => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => resolve(new Image());
         img.src = src;
     });
 }
 </script>
-
 </body>
 </html>
